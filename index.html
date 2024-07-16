@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schulkalender</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .calendar-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .calendar-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 16px;
+            text-align: center;
+            width: 14.28%;
+            position: relative;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .holiday,
+        .free-day {
+            background-color: #c2f9c2;
+        }
+
+        .today {
+            background-color: #add8e6;
+        }
+
+        .exam-day {
+            background-color: orange;
+        }
+
+        .schoolwork-day {
+            background-color: rgb(255, 114, 114);
+        }
+
+        .quiz-day {
+            background-color: yellow;
+        }
+
+        .task-day {
+            background-color: rgb(192, 192, 192);
+        }
+
+        .selected-day {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .selected-day div {
+            margin-bottom: 10px;
+        }
+
+        .calendar-navigation input {
+            padding: 5px;
+            font-size: 16px;
+        }
+
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: white;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+
+        .dropdown button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            text-align: left;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .dropdown button:hover {
+            background-color: #f1f1f1;
+        }
+
+        .upcoming-events-container {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .event {
+            margin-bottom: 10px;
+        }
+
+        .event-task {
+            color: black;
+        }
+
+        .test-day {
+            background-color: rgb(248, 201, 113);
+        }
+
+        .event-revision {
+            color: rgb(255, 234, 0);
+        }
+
+        .event-presentation {
+            background-color: rgb(255, 135, 255);
+        }
+
+        .event-concert {
+            background-color: #ca9572;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="calendar-container">
+        <div class="calendar-navigation">
+            <button id="prevWeek">←</button>
+            <span id="currentWeek"></span>
+            <button id="nextWeek">→</button>
+            <input type="text" id="jumpToDate" placeholder="TT.MM.JJJJ" />
+            <button id="jumpButton">Gehe zu</button>
+        </div>
+        <table id="calendar">
+            <thead>
+                <tr>
+                    <th data-day="1">Montag</th>
+                    <th data-day="2">Dienstag</th>
+                    <th data-day="3">Mittwoch</th>
+                    <th data-day="4">Donnerstag</th>
+                    <th data-day="5">Freitag</th>
+                    <th data-day="6">Samstag</th>
+                    <th data-day="0">Sonntag</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Kalender wird hier generiert -->
+            </tbody>
+        </table>
+        <div class="selected-day" id="selectedDayDetails">
+            <!-- Details zum ausgewählten Tag werden hier angezeigt -->
+        </div>
+        <div>
+            <div>Hausaufgaben erinnern in:</div>
+            <button id="taskReminderButton">Tagen</button>
+            <div class="dropdown" id="taskDropdown">
+                <button class="days-option" data-days="1">1 Tag</button>
+                <button class="days-option" data-days="2">2 Tage</button>
+                <button class="days-option" data-days="3">3 Tage</button>
+                <button class="days-option" data-days="4">4 Tage</button>
+                <button class="days-option" data-days="5">5 Tage</button>
+                <button class="days-option" data-days="7">1 Woche</button>
+                <button class="days-option" data-days="14">2 Wochen</button>
+            </div>
+            <div class="upcoming-events-container" id="taskEventsContainer"></div>
+        </div>
+        <div>
+            <div>Test oder Schularbeiten erinnern in:</div>
+            <button id="examReminderButton">Tagen</button>
+            <div class="dropdown" id="examDropdown">
+                <button class="days-option" data-days="1">1 Tag</button>
+                <button class="days-option" data-days="2">2 Tage</button>
+                <button class="days-option" data-days="3">3 Tage</button>
+                <button class="days-option" data-days="4">4 Tage</button>
+                <button class="days-option" data-days="5">5 Tage</button>
+                <button class="days-option" data-days="7">1 Woche</button>
+                <button class="days-option" data-days="14">2 Wochen</button>
+            </div>
+            <div class="upcoming-events-container" id="examEventsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const holidays = [
+            "2024-12-24", "2024-12-25", "2024-12-26", "2024-12-31", "2025-01-01", "2025-01-06"
+            // Fügen Sie hier die Ferien für Oberösterreich ein
+        ];
+
+        const events = JSON.parse(localStorage.getItem('events')) || {};
+
+        function saveEvents() {
+            localStorage.setItem('events', JSON.stringify(events));
+        }
+
+        let currentStartDate = new Date();
+
+        function generateCalendar(startDate, daysToShow = 7) {
+            const tbody = document.querySelector("#calendar tbody");
+            tbody.innerHTML = "";
+            let currentDate = new Date(startDate);
+
+            const weekStartDate = new Date(startDate);
+            weekStartDate.setDate(weekStartDate.getDate() - (weekStartDate.getDay() === 0 ? 6 : weekStartDate.getDay() - 1));
+            document.getElementById("currentWeek").textContent = `${formatDate(weekStartDate)} - ${formatDate(new Date(weekStartDate).setDate(weekStartDate.getDate() + 6))}`;
+
+            for (let rowIdx = 0; rowIdx < daysToShow; rowIdx++) {
+                const tr = document.createElement('tr');
+                for (let day = 1; day <= 7; day++) {
+                    const cellDate = new Date(weekStartDate);
+                    cellDate.setDate(cellDate.getDate() + (day - 1));
+                    const dateString = cellDate.toISOString().split('T')[0];
+                    const isHoliday = holidays.includes(dateString);
+                    const isFreeDay = cellDate.getDay() === 0 || cellDate.getDay() === 6; // Samstag und Sonntag
+                    const td = document.createElement('td');
+                    td.className = isHoliday || isFreeDay ? 'holiday' : '';
+                    if (isToday(dateString)) {
+                        td.classList.add('today');
+                    }
+                    td.setAttribute('contenteditable', 'true');
+                    td.textContent = events[dateString] || '';
+                    td.dataset.date = dateString;
+
+                    // Färbe die Zelle basierend auf dem gespeicherten Ereignistext
+                    updateCellColor(td, td.textContent);
+
+                    // Hinzufügen der Eventlistener für Klick und Eingabe
+                    td.addEventListener('click', (e) => {
+                        displayDayDetails(dateString);
+                    });
+
+                    td.addEventListener('input', (e) => {
+                        const value = e.target.textContent;
+                        events[dateString] = value;
+                        saveEvents();
+
+                        // Färbe die Zelle basierend auf dem eingegebenen Text
+                        updateCellColor(td, value);
+                    });
+
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+        }
+
+        function displayDayDetails(dateString) {
+            const detailsDiv = document.getElementById("selectedDayDetails");
+            const eventEntries = Array(3).fill().map((_, idx) => `<div contenteditable="true">${events[addDays(dateString, idx)] || ''}</div>`).join("");
+            detailsDiv.innerHTML = `
+                <div><strong>${formatDate(dateString, true)}</strong></div>
+                <div>
+                    <button id="eventSaveButton">Speichern</button>
+                    <button id="eventCancelButton">Abbrechen</button>
+                </div>
+                ${eventEntries}`;
+
+            const eventSaveButton = document.getElementById("eventSaveButton");
+            eventSaveButton.addEventListener("click", () => {
+                const eventDetails = Array.from(detailsDiv.querySelectorAll("div[contenteditable]")).map(div => div.textContent.trim()).join("\n");
+                events[dateString] = eventDetails;
+                saveEvents();
+                generateCalendar(currentStartDate);
+                displayDayDetails(dateString);
+            });
+
+            const eventCancelButton = document.getElementById("eventCancelButton");
+            eventCancelButton.addEventListener("click", () => {
+                displayDayDetails(dateString);
+            });
+        }
+
+        function updateCellColor(td, text) {
+            const table = document.getElementById("calendar");
+            const colIndex = td.cellIndex;
+            const rows = table.rows;
+            
+            for (let i = 1; i < rows.length; i++) {
+                rows[i].cells[colIndex].className = ''; // Reset the class
+            }
+            
+            if (text.toLowerCase().includes('frei')) {
+                for (let i = 1; i < rows.length; i++) {
+                    rows[i].cells[colIndex].classList.add('free-day');
+                }
+            } else if (text.toLowerCase().includes('präsentation')) {
+                for (let i = 1; i < rows.length; i++) {
+                    rows[i].cells[colIndex].classList.add('event-presentation');
+                }
+            } else if (text.toLowerCase().includes('konzert')) {
+                for (let i = 1; i < rows.length; i++) {
+                    rows[i].cells[colIndex].classList.add('event-concert');
+                }
+            } else if (text.toLowerCase().includes('schularbeit')) {
+                for (let i = 1; i < rows.length; i++) {
+                    rows[i].cells[colIndex].classList.add('schoolwork-day');
+                }
+            } else if (text.toLowerCase().includes('test')) {
+                for (let i = 1; i < rows.length; i++) {
+                    rows[i].cells[colIndex].classList.add('exam-day');
+                }
+            } else if (text.toLowerCase().includes('quiz') || text.toLowerCase().includes('revision')) {
+                for (let i = 1; i < rows.length; i++) {
+                    rows[i].cells[colIndex].classList.add('quiz-day');
+                }
+            } else if (text.trim() !== '') {
+                for (let i = 1; i < rows.length; i++) {
+                    rows[i].cells[colIndex].classList.add('task-day');
+                }
+            }
+        }
+
+        function isHoliday(dateString) {
+            return holidays.includes(dateString);
+        }
+
+        function isToday(dateString) {
+            const today = new Date();
+            const dd = String(today.getDate()).padStart(2, '0');
+            const mm = String(today.getMonth() + 1).padStart(2, '0'); // Januar ist 0!
+            const yyyy = today.getFullYear();
+            const todayString = yyyy + '-' + mm + '-' + dd;
+            return dateString === todayString;
+        }
+
+        function formatDate(date, includeWeekday = false) {
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            if (includeWeekday) {
+                options.weekday = 'long';
+            }
+            return new Date(date).toLocaleDateString('de-DE', options);
+        }
+
+        function jumpToDate() {
+            const jumpToDateInput = document.getElementById("jumpToDate");
+            const jumpDate = new Date(jumpToDateInput.value.split('.').reverse().join('-'));
+            if (!isNaN(jumpDate.getTime())) {
+                currentStartDate = jumpDate;
+                generateCalendar(currentStartDate);
+            } else {
+                alert("Ungültiges Datumsformat. Bitte verwenden Sie das Format TT.MM.JJJJ.");
+            }
+            jumpToDateInput.value = "";
+        }
+
+        function addDays(dateString, days) {
+            const date = new Date(dateString);
+            date.setDate(date.getDate() + days);
+            return date.toISOString().split('T')[0];
+        }
+
+        document.getElementById("prevWeek").addEventListener("click", () => {
+            currentStartDate.setDate(currentStartDate.getDate() - 7);
+            generateCalendar(currentStartDate);
+        });
+
+        document.getElementById("nextWeek").addEventListener("click", () => {
+            currentStartDate.setDate(currentStartDate.getDate() + 7);
+            generateCalendar(currentStartDate);
+        });
+
+        document.getElementById("jumpButton").addEventListener("click", jumpToDate);
+
+        generateCalendar(currentStartDate);
+
+        // Dropdown für Hausaufgaben-Erinnerung
+        const taskReminderButton = document.getElementById("taskReminderButton");
+        const taskDropdown = document.getElementById("taskDropdown");
+        taskReminderButton.addEventListener("click", () => {
+            taskDropdown.style.display = taskDropdown.style.display === "block" ? "none" : "block";
+        });
+
+        document.querySelectorAll("#taskDropdown button").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const days = parseInt(btn.getAttribute("data-days"));
+                const remindDate = new Date(currentStartDate);
+                remindDate.setDate(remindDate.getDate() + days);
+                alert(`Erinnerung für Hausaufgaben am ${formatDate(remindDate, true)}.`);
+                taskDropdown.style.display = "none";
+            });
+        });
+
+        // Dropdown für Test/Schularbeiten-Erinnerung
+        const examReminderButton = document.getElementById("examReminderButton");
+        const examDropdown = document.getElementById("examDropdown");
+        examReminderButton.addEventListener("click", () => {
+            examDropdown.style.display = examDropdown.style.display === "block" ? "none" : "block";
+        });
+
+        document.querySelectorAll("#examDropdown button").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const days = parseInt(btn.getAttribute("data-days"));
+                const remindDate = new Date(currentStartDate);
+                remindDate.setDate(remindDate.getDate() + days);
+                alert(`Erinnerung für Test/Schularbeit am ${formatDate(remindDate, true)}.`);
+                examDropdown.style.display = "none";
+            });
+        });
+    </script>
+</body>
+
+</html>
